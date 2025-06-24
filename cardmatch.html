@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Card Matching Puzzle</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
+    .game-header { margin-top: 20px; font-size: 20px; }
+    .game-area { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 30px auto; max-width: 600px; }
+    .card {
+      width: 80px; height: 120px;
+      background: white; border: 2px solid #333;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: bold;
+      cursor: grab; user-select: none;
+    }
+    .red { color: red; }
+    .card.dragging { opacity: 0.5; }
+    #message { margin-top: 10px; font-size: 18px; }
+    #playBtn { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="game-header">
+    Score: <span id="score">0</span>
+  </div>
+  <div class="game-area" id="gameArea"></div>
+  <div id="message"></div>
+  <button id="playBtn">Play Again</button>
+
+  <script>
+    const suits = ["♠", "♥", "♦", "♣"];
+    const numbers = [1, 2, 3, 4, 5, 6];
+    const gameArea = document.getElementById("gameArea");
+    const message = document.getElementById("message");
+    const scoreDisplay = document.getElementById("score");
+    const playBtn = document.getElementById("playBtn");
+
+    let firstCard = null;
+    let score = 0;
+    let comboCount = 0;
+    let matchCount = 0;
+    let startTime = 0;
+
+    function createDeck() {
+      const deck = [];
+      for (let suit of suits) {
+        for (let num of numbers) {
+          deck.push({ suit, num });
+        }
+      }
+      return shuffle(deck).slice(0, 12);
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function renderCards(deck) {
+      gameArea.innerHTML = '';
+      deck.forEach((card, index) => {
+        const cardDiv = document.createElement("div");
+        cardDiv.className = "card";
+        if (card.suit === "♥" || card.suit === "♦") {
+          cardDiv.classList.add("red");
+        }
+        cardDiv.draggable = true;
+        cardDiv.dataset.index = index;
+        cardDiv.dataset.suit = card.suit;
+        cardDiv.dataset.num = card.num;
+        cardDiv.textContent = `${card.num}${card.suit}`;
+        cardDiv.addEventListener("dragstart", handleDragStart);
+        cardDiv.addEventListener("dragover", e => e.preventDefault());
+        cardDiv.addEventListener("drop", handleDrop);
+        gameArea.appendChild(cardDiv);
+      });
+    }
+
+    function handleDragStart(e) {
+      firstCard = e.target;
+      e.target.classList.add("dragging");
+    }
+
+    function handleDrop(e) {
+      const secondCard = e.target;
+      firstCard.classList.remove("dragging");
+      if (firstCard === secondCard) return;
+
+      const aSuit = firstCard.dataset.suit;
+      const aNum = firstCard.dataset.num;
+      const bSuit = secondCard.dataset.suit;
+      const bNum = secondCard.dataset.num;
+
+      let matched = false;
+
+      if (aSuit === bSuit && aNum === bNum) {
+        score += 30;
+        comboCount++;
+        matched = true;
+        firstCard.style.background = "#8f8";
+        secondCard.style.background = "#8f8";
+        message.textContent = "Perfect match! +30";
+      } else if (aSuit === bSuit || aNum === bNum) {
+        score += 10;
+        comboCount++;
+        matched = true;
+        firstCard.style.background = "#ff8";
+        secondCard.style.background = "#ff8";
+        message.textContent = "Partial match! +10";
+      } else {
+        score -= 5;
+        comboCount = 0;
+        firstCard.style.background = "#f88";
+        secondCard.style.background = "#f88";
+        message.textContent = "No match. -5";
+      }
+
+      if (matched) {
+        matchCount += 1;
+        if (comboCount >= 2) {
+          score += 10;
+          message.textContent += " Combo! +10";
+        }
+      }
+
+      scoreDisplay.textContent = score;
+      firstCard = null;
+
+      if (matchCount >= 6) endGame();
+    }
+
+    function endGame() {
+      const elapsed = (Date.now() - startTime) / 1000;
+      let timeBonus = Math.max(0, 100 - Math.floor(Math.max(0, elapsed - 5)) * 2);
+      score += timeBonus;
+      scoreDisplay.textContent = score;
+      message.textContent = `Game Clear! Time Bonus: +${timeBonus}`;
+    }
+
+    function startGame() {
+      score = 0;
+      comboCount = 0;
+      matchCount = 0;
+      startTime = Date.now();
+      scoreDisplay.textContent = score;
+      message.textContent = "";
+      const deck = createDeck();
+      renderCards(deck);
+    }
+
+    playBtn.addEventListener("click", startGame);
+    startGame();
+  </script>
+</body>
+</html>
